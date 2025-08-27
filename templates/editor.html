@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+    <title>Minecraft Dat File Editor</title>
+    <style>
+        textarea { width: 90%; height: 500px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>dat ファイルの編集</h1>
+    <form method="post" action="/convert">
+        <input type="hidden" name="filename" value="{{ filename }}">
+        <textarea name="edited_data">{{ nbt_data_json }}</textarea>
+        <br><br>
+        <input type="submit" value="NBTに変換してダウンロード">
+    </form>
+</body>
+</html>
