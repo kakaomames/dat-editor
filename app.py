@@ -5,27 +5,18 @@ from flask import Flask, render_template, request, redirect, url_for, send_file,
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-# ユーザーがアップロードするファイルの容量を制限（例: 16MB）
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-# アップロードフォルダを指定
-app.config['UPLOAD_FOLDER'] = 'uploads/'
 
-# アップロードフォルダが存在しない場合は作成
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
+# 【変更点1】 アップロードフォルダを /tmp に設定
+# Vercelのサーバーレス環境では /tmp のみが書き込み可能
+app.config['UPLOAD_FOLDER'] = '/tmp'
 
 def allowed_file(filename):
-    """
-    許可されたファイル形式か確認
-    """
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ['dat']
 
 @app.route('/')
 def index():
-    """
-    ファイルアップロード用のフォームを表示する
-    """
     return """
     <!doctype html>
     <title>Minecraft Dat File Converter</title>
@@ -38,9 +29,6 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    """
-    アップロードされたファイルを処理し、編集画面にリダイレクトする
-    """
     if 'file' not in request.files:
         return redirect(request.url)
     file = request.files['file']
@@ -48,6 +36,7 @@ def upload_file():
         return "許可されていないファイル形式です。datファイルをアップロードしてください。", 400
 
     filename = secure_filename(file.filename)
+    # 【変更点2】 ファイルパスを /tmp に設定
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
 
@@ -55,9 +44,7 @@ def upload_file():
 
 @app.route('/edit/<filename>', methods=['GET'])
 def edit_file(filename):
-    """
-    datファイルの内容をJSONとして読み込み、編集フォームを表示する
-    """
+    # 【変更点3】 ファイルパスを /tmp に設定
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(filename))
     if not os.path.exists(filepath):
         return "ファイルが見つかりません。", 404
@@ -72,39 +59,33 @@ def edit_file(filename):
         
 @app.route('/convert', methods=['POST'])
 def convert_file():
-    """
-    編集されたJSONデータを受け取り、NBTファイルに変換してダウンロードさせる
-    """
     try:
-        # JSONデータを取得
         edited_json = request.form['edited_data']
         filename = request.form['filename']
 
-        # JSON文字列をPythonの辞書に変換
         edited_data = json.loads(edited_json)
-
-        # 辞書をNBTオブジェクトに変換
-        # nbtlibの内部的なデータ型（Int, Stringなど）を自動で推測
         nbt_data = nbtlib.File.from_json_obj(edited_data)
         
-        # 変換後のファイルのパス
+        # 【変更点4】 ファイルパスを /tmp に設定
         output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], "converted_" + secure_filename(filename))
         
-        # NBTファイルを保存
         nbt_data.save(output_filepath)
         
-        # ファイルをダウンロードとして送信
         return send_file(output_filepath, as_attachment=True)
 
     except Exception as e:
         return f"変換中にエラーが発生しました: {e}"
     finally:
-        # 処理が終わったら一時ファイルを削除
+        # 【変更点5】 ファイルパスを /tmp に設定
         uploaded_filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(filename))
         if os.path.exists(uploaded_filepath):
             os.remove(uploaded_filepath)
         if 'output_filepath' in locals() and os.path.exists(output_filepath):
             os.remove(output_filepath)
+
+# 【変更点6】 Vercelでは不要な os.makedirs を削除
+# if not os.path.exists(app.config['UPLOAD_FOLDER']):
+#     os.makedirs(app.config['UPLOAD_FOLDER'])
 
 if __name__ == '__main__':
     app.run(debug=True)
