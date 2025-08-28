@@ -21,7 +21,7 @@ def index():
     <!doctype html>
     <title>Minecraft Dat File Converter</title>
     <h1>dat ファイルをアップロード</h1>
-    <form method=post enctype=multipart/form-data action="/upload">
+    <form method=post enctype=multipart/form-data action="./upload">
       <input type=file name=file accept=".dat">
       <input type=submit value=Upload>
     </form>
