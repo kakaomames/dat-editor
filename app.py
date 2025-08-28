@@ -140,6 +140,8 @@ def upload_file():
     # 【変更点3】 edit_fileにUUIDとバージョンを渡す
     return redirect(url_for('edit_file', unique_id=unique_id, version=version))
 
+# ... app.pyの既存のコードは省略 ...
+
 @app.route('/edit/<unique_id>/<version>', methods=['GET'])
 def edit_file(unique_id, version):
     """
@@ -148,26 +150,29 @@ def edit_file(unique_id, version):
     if not all([GITHUB_API_KEY, GITHUB_REPO_OWNER, GITHUB_REPO_NAME]):
         return "GitHubの環境変数が設定されていません。", 500
     
-    # 【変更点4】 GitHubからオリジナルファイルをダウンロード
+    # GitHubからオリジナルファイルをダウンロード
     github_path = f"original/{version}/{unique_id}-level.dat"
     local_filepath, message = get_from_github(github_path)
 
     if not local_filepath:
-        # zip/mcworldの場合は、中身のlevel.datを取得するロジックが必要
-        # この簡略版では直接datファイルがアップロードされた前提
         return f"ファイルが見つかりません: {message}", 404
         
     try:
-        nbt_file = nbtlib.load(local_filepath)
-        nbt_data_json = json.dumps(nbt_file.root.json_obj(), indent=4)
+        # 【修正点1】 nbtlib.load()が直接Compoundを返すように変更されたため、.rootを削除
+        nbt_data = nbtlib.load(local_filepath)
+        
+        # 【修正点2】 json_obj()を直接呼び出す
+        nbt_data_json = json.dumps(nbt_data.json_obj(), indent=4)
         
         return render_template('editor.html', nbt_data_json=nbt_data_json, unique_id=unique_id, version=version)
     except Exception as e:
         return f"エラーが発生しました: {e}"
     finally:
-        # 【変更点5】 処理が終わったら一時ファイルを削除
+        # 処理が終わったら一時ファイルを削除
         if os.path.exists(local_filepath):
             os.remove(local_filepath)
+
+# ... app.pyの残りのコードは省略 ...
             
 @app.route('/convert', methods=['POST'])
 def convert_file():
