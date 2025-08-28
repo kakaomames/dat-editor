@@ -140,7 +140,13 @@ def upload_file():
     # 【変更点3】 edit_fileにUUIDとバージョンを渡す
     return redirect(url_for('edit_file', unique_id=unique_id, version=version))
 
-# # ... app.pyの既存のコードは省略 ...
+# app.pyのedit_file関数を以下のように修正
+
+
+
+
+
+
 
 @app.route('/edit/<unique_id>/<version>', methods=['GET'])
 def edit_file(unique_id, version):
@@ -150,7 +156,6 @@ def edit_file(unique_id, version):
     if not all([GITHUB_API_KEY, GITHUB_REPO_OWNER, GITHUB_REPO_NAME]):
         return "GitHubの環境変数が設定されていません。", 500
     
-    # GitHubからオリジナルファイルをダウンロード
     github_path = f"original/{version}/{unique_id}-level.dat"
     local_filepath, message = get_from_github(github_path)
 
@@ -158,19 +163,30 @@ def edit_file(unique_id, version):
         return f"ファイルが見つかりません: {message}", 404
         
     try:
-        # 【修正点】nbtlib.load()はFileオブジェクトを返すため、.rootを経由する
-        nbt_file = nbtlib.load(local_filepath)
-        nbt_data_json = json.dumps(nbt_file.root.json_obj(), indent=4)
+        nbt_object = nbtlib.load(local_filepath)
+        
+        # 【修正点】 .rootプロパティがあるかどうかをチェックする
+        if hasattr(nbt_object, 'root'):
+            nbt_data_json = json.dumps(nbt_object.root.json_obj(), indent=4)
+        else:
+            nbt_data_json = json.dumps(nbt_object.json_obj(), indent=4)
         
         return render_template('editor.html', nbt_data_json=nbt_data_json, unique_id=unique_id, version=version)
     except Exception as e:
         return f"エラーが発生しました: {e}"
     finally:
-        # 処理が終わったら一時ファイルを削除
         if os.path.exists(local_filepath):
             os.remove(local_filepath)
 
-# ... app.pyの残りのコードは省略 ...
+
+
+
+
+
+
+
+
+
             
 @app.route('/convert', methods=['POST'])
 def convert_file():
