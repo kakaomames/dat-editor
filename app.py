@@ -140,7 +140,7 @@ def upload_file():
     # 【変更点3】 edit_fileにUUIDとバージョンを渡す
     return redirect(url_for('edit_file', unique_id=unique_id, version=version))
 
-# ... app.pyの既存のコードは省略 ...
+# # ... app.pyの既存のコードは省略 ...
 
 @app.route('/edit/<unique_id>/<version>', methods=['GET'])
 def edit_file(unique_id, version):
@@ -158,11 +158,9 @@ def edit_file(unique_id, version):
         return f"ファイルが見つかりません: {message}", 404
         
     try:
-        # 【修正点1】 nbtlib.load()が直接Compoundを返すように変更されたため、.rootを削除
-        nbt_data = nbtlib.load(local_filepath)
-        
-        # 【修正点2】 json_obj()を直接呼び出す
-        nbt_data_json = json.dumps(nbt_data.json_obj(), indent=4)
+        # 【修正点】nbtlib.load()はFileオブジェクトを返すため、.rootを経由する
+        nbt_file = nbtlib.load(local_filepath)
+        nbt_data_json = json.dumps(nbt_file.root.json_obj(), indent=4)
         
         return render_template('editor.html', nbt_data_json=nbt_data_json, unique_id=unique_id, version=version)
     except Exception as e:
